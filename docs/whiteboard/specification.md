@@ -97,3 +97,10 @@ locally or on the cloud.
 
 *Allows users to see who created a stroke/shape by showing a small bubble next*
 *to it for a short time, similar to how it works on Google Office Suites*
+
+### Importing Images
+
+*Allows users to import images into the whiteboard*
+
+Users will be able to import images from their local machine, or directly from an
+existing screen/camera share.
