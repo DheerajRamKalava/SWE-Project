@@ -21,7 +21,7 @@ documentation. Users will be able to vary the pen stroke width.
 
 ### Colors
 
-*Allows users to change color of whiteboar items*
+*Allows users to change color of whiteboard items*
 
 > [!NOTE]
 > Stretch Goal - Support for full RGB color palette
