@@ -1,1 +1,3 @@
-<Solution />
+<Solution>
+  <Project Path="Screenshare/Screenshare.csproj" />
+</Solution>
