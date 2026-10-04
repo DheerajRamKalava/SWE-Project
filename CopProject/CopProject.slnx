@@ -1,6 +1,7 @@
 <Solution>
     <Project Path="Authentication/Auth.csproj" />
     <Project Path="Chat/Chat.csproj" />
+    <Project Path="Chat.Test/Chat.Test.csproj" />
     <Project Path="Cloud/Cloud.csproj" />
     <Project Path="Controller/Controller.csproj" />
     <Project Path="FileSync/Filesync.csproj" />
