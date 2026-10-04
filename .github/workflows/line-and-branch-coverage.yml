@@ -12,6 +12,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: write   # To post the coverage comment.
 
 env:
   # These variables are set to 80 as fallback, if their corresponding
@@ -55,6 +56,33 @@ jobs:
           -reports:"coverage/**/coverage.cobertura.xml"
           -targetdir:"coverage-report"
           -reporttypes:"Html;MarkdownSummaryGithub;JsonSummary"
+
+      - name: Add summary to the run page
+        run: cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload HTML report
+        id: upload-html
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report-pr-${{ github.event.pull_request.number }}
+          path: coverage-report/
+          retention-days: 60
+
+      - name: Comment on PR
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HTML_URL: ${{ steps.upload-html.outputs.artifact-url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "## Code coverage report"
+            echo
+            cat coverage-report/SummaryGithub.md
+            echo
+            echo "**Full HTML report:** [download artifact (zip)]($HTML_URL)"
+          } > comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md --edit-last --create-if-none
 
       - name: Enforce line coverage threshold
         run: |
