@@ -1,14 +1,102 @@
-﻿namespace ScreenShare
+﻿using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+namespace ScreenShare
 {
     public class ImageDiffer : IImageDiffer
     {
         private const int TILE_SIZE = 64;
-        private readonly Dictionary<(int X, int Y), ulong> previousTileHashes;
+        /*if more than this percentage of the screen has changed, sending individual tiles becomes less useful, so we send the complete frame.*/
+        private const double FULL_FRAME_THRESHOLD = 0.50;
 
-        public ImageDiffer()
+        private const ulong FNV_OFFSET_BASIS = 14695981039346656037UL;
+        private const ulong FNV_PRIME = 1099511628211UL;
+        //private readonly Dictionary<(int X, int Y), ulong> previousTileHashes;
+
+        //public ImageDiffer()
+        //{
+        //    previousTileHashes =
+        //        new Dictionary<(int X, int Y), ulong>();
+        //}
+
+        public ImageDiffResult Compare(Bitmap previousFrame,Bitmap currentFrame)
         {
-            previousTileHashes =
-                new Dictionary<(int X, int Y), ulong>();
+            if (previousFrame.Width != currentFrame.Width || previousFrame.Height != currentFrame.Height)
+            {
+                return ImageDiffResult.FullFrame(new Bitmap(currentFrame));
+            }
+
+            int columns =(currentFrame.Width + TILE_SIZE - 1) / TILE_SIZE;
+
+            int rows =(currentFrame.Height + TILE_SIZE - 1) / TILE_SIZE;
+
+            List<Tile> changedTiles = new();
+
+            int totalPixels =currentFrame.Width * currentFrame.Height;
+
+            int changedPixels = 0;
+
+            for (int row = 0; row < rows; row++)
+            {
+                for (int column = 0; column < columns; column++)
+                {
+                    int x = column * TILE_SIZE;
+                    int y = row * TILE_SIZE;
+
+                    int width = Math.Min(TILE_SIZE,currentFrame.Width - x);
+
+                    int height = Math.Min(TILE_SIZE,currentFrame.Height - y);
+
+                    ulong previousHash =CalculateTileHash(previousFrame,x,y,width,height);
+
+                    ulong currentHash =CalculateTileHash(currentFrame,x,y,width,height);
+
+                    if (previousHash != currentHash)
+                    {
+                        byte[] tileData =ExtractTileData(currentFrame,x,y,width,height);
+
+                        changedTiles.Add(
+                            new Tile(
+                                x,
+                                y,
+                                width,
+                                height,
+                                currentHash,
+                                tileData
+                            )
+                        );
+
+                        changedPixels += width * height;
+                    }
+                }
+            }
+
+            
+             // Nothing changed.
+
+            if (changedTiles.Count == 0)
+            {
+                return ImageDiffResult.Unchanged();
+            }
+
+            
+             //tooo much of the screen changed.
+             //send a full frame instead of many tiles.
+             
+            double changeRatio =
+                (double)changedPixels / totalPixels;
+
+            if (changeRatio >= FULL_FRAME_THRESHOLD)
+            {
+                return ImageDiffResult.FullFrame(
+                    new Bitmap(currentFrame)
+                );
+            }
+
+            
+             // only a small part changed. send the changed tiles.
+            
+            return ImageDiffResult.Delta(changedTiles);
         }
 
         private ulong CalculateTileHash(Bitmap bitmap, int startX, int startY, int width, int height)

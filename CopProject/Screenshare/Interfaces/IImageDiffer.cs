@@ -1,8 +1,9 @@
-﻿namespace ScreenShare
+﻿using System.Drawing;
+namespace ScreenShare
 {
     public interface IImageDiffer
     {
-        List<Tile> FindChangedTiles(Bitmap currentFrame);
+        ImageDiffResult Compare(Bitmap previousFrame, Bitmap currentFrame);
     }
 
 }
