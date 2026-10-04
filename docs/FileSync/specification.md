@@ -19,10 +19,10 @@ To develop a file synchronization module for the Cop project with the following 
 
 ```mermaid
 graph TD
-    FileSync -->|inheritance| ISync
-    SyncServer -->|composition| FileSync
-    SyncClient -->|composition| FileSync
+    UI(Incident Team UI) -->|Calls StartSyncSession| ISync(ISyncManager Interface)
+    ISync -->|Triggers| Boss[FileSynchronizer]
+    Boss -->|Starts Background Listener| Server[SyncServer]
+    Boss -->|Starts Active Transfer| Client[SyncClient]
 ```
 
 ---
-
