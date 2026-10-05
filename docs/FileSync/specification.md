@@ -15,3 +15,14 @@ To develop a file synchronization module for the Cop project with the following 
 
 ---
 
+## Basic Class Diagram 
+
+```mermaid
+graph TD
+    FileSync -->|inheritance| ISync
+    SyncServer -->|composition| FileSync
+    SyncClient -->|composition| FileSync
+```
+
+---
+
