@@ -17,11 +17,15 @@ namespace ScreenShare
             ChangedTiles = changedTiles;
             FullFrame = fullFrame;
         }
+        public static ImageDiffResult Unchanged()
+        {
+            return new ImageDiffResult(isUnchanged: true,isFullFrame: false,changedTiles: new List<Tile>(),fullFrame: null);
+        }
         public static ImageDiffResult Delta(List<Tile> changedTiles)
         {
             return new ImageDiffResult(isUnchanged: false, isFullFrame: false, changedTiles: changedTiles, fullFrame: null);
         }
-        public static ImageDiffResult FullFrame(Bitmap frame)
+        public static ImageDiffResult CreateFullFrame(Bitmap frame)
         {
             return new ImageDiffResult(isUnchanged: false, isFullFrame: true, changedTiles: new List<Tile>(), fullFrame: frame);
         }

@@ -28,9 +28,9 @@ public class ScreenSharingService
         {
             previousFrame =new Bitmap(currentFrame);
 
-            currentFrame.Dispose();
+            //currentFrame.Dispose();
 
-            return ImageDiffResult.FullFrame(new Bitmap(previousFrame));
+            return ImageDiffResult.CreateFullFrame(new Bitmap(previousFrame));
         }
 
         ImageDiffResult result =imageDiffer.Compare(previousFrame,currentFrame);

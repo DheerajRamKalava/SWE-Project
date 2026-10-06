@@ -23,7 +23,7 @@ namespace ScreenShare
         {
             if (previousFrame.Width != currentFrame.Width || previousFrame.Height != currentFrame.Height)
             {
-                return ImageDiffResult.FullFrame(new Bitmap(currentFrame));
+                return ImageDiffResult.CreateFullFrame(new Bitmap(currentFrame));
             }
 
             int columns =(currentFrame.Width + TILE_SIZE - 1) / TILE_SIZE;
@@ -88,7 +88,7 @@ namespace ScreenShare
 
             if (changeRatio >= FULL_FRAME_THRESHOLD)
             {
-                return ImageDiffResult.FullFrame(
+                return ImageDiffResult.CreateFullFrame(
                     new Bitmap(currentFrame)
                 );
             }
@@ -123,74 +123,74 @@ namespace ScreenShare
             return hash;
         }
 
-        private List<Tile> FindChangedTiles(Bitmap currentFrame)
-        {
-            List<Tile> changedTiles = new List<Tile>();
+        //private List<Tile> FindChangedTiles(Bitmap currentFrame)
+        //{
+        //    List<Tile> changedTiles = new List<Tile>();
 
-            int screenWidth = currentFrame.Width;
-            int screenHeight = currentFrame.Height;
+        //    int screenWidth = currentFrame.Width;
+        //    int screenHeight = currentFrame.Height;
 
-            for (int y = 0; y < screenHeight; y += TILE_SIZE)
-            {
-                for (int x = 0; x < screenWidth; x += TILE_SIZE)
-                {
-                    int tileWidth = Math.Min(
-                        TILE_SIZE,
-                        screenWidth - x
-                    );
+        //    for (int y = 0; y < screenHeight; y += TILE_SIZE)
+        //    {
+        //        for (int x = 0; x < screenWidth; x += TILE_SIZE)
+        //        {
+        //            int tileWidth = Math.Min(
+        //                TILE_SIZE,
+        //                screenWidth - x
+        //            );
 
-                    int tileHeight = Math.Min(
-                        TILE_SIZE,
-                        screenHeight - y
-                    );
+        //            int tileHeight = Math.Min(
+        //                TILE_SIZE,
+        //                screenHeight - y
+        //            );
 
-                    ulong currentHash = CalculateTileHash(
-                        currentFrame,
-                        x,
-                        y,
-                        tileWidth,
-                        tileHeight
-                    );
+        //            ulong currentHash = CalculateTileHash(
+        //                currentFrame,
+        //                x,
+        //                y,
+        //                tileWidth,
+        //                tileHeight
+        //            );
 
-                    var tilePosition = (x, y);
+        //            var tilePosition = (x, y);
 
-                    bool changed = true;
+        //            bool changed = true;
 
-                    if (_previousTileHashes.TryGetValue(
-                            tilePosition,
-                            out ulong previousHash))
-                    {
-                        if (previousHash != currentHash)
-                        {
-                            Console.WriteLine(
-                                $"Changed tile ({x}, {y}) | " +
-                                $"Old: {previousHash:X16} | " +
-                                $"New: {currentHash:X16}"
-                            );
-                        }
-                        changed = previousHash != currentHash;
-                    }
+        //            if (_previousTileHashes.TryGetValue(
+        //                    tilePosition,
+        //                    out ulong previousHash))
+        //            {
+        //                if (previousHash != currentHash)
+        //                {
+        //                    Console.WriteLine(
+        //                        $"Changed tile ({x}, {y}) | " +
+        //                        $"Old: {previousHash:X16} | " +
+        //                        $"New: {currentHash:X16}"
+        //                    );
+        //                }
+        //                changed = previousHash != currentHash;
+        //            }
 
-                    if (changed)
-                    {
-                        Tile tile = new Tile {
-                            X = x,
-                            Y = y,
-                            Width = tileWidth,
-                            Height = tileHeight,
-                            Hash = currentHash,
-                            Data = ExtractTileData(currentFrame, x, y, tileWidth, tileHeight)
-                        };
+        //            if (changed)
+        //            {
+        //                Tile tile = new Tile {
+        //                    X = x,
+        //                    Y = y,
+        //                    Width = tileWidth,
+        //                    Height = tileHeight,
+        //                    Hash = currentHash,
+        //                    Data = ExtractTileData(currentFrame, x, y, tileWidth, tileHeight)
+        //                };
 
-                        changedTiles.Add(tile);
-                    }
+        //                changedTiles.Add(tile);
+        //            }
 
-                    _previousTileHashes[tilePosition] = currentHash;
-                }
-            }
+        //            _previousTileHashes[tilePosition] = currentHash;
+        //        }
+        //    }
 
-            return changedTiles;
-        }
+        //    return changedTiles;
+        //}
 
         private byte[] ExtractTileData(Bitmap bitmap, int startX, int startY, int width, int height)
         {
