@@ -26,3 +26,52 @@ graph TD
 
 ---
 
+
+## Interface for Other Modules to Use
+
+FileSync is a low-level module that does not directly interact with any other modules. It exposes only one method, `GetDirectory()`, which returns the path to the common shared directory present on every system.
+
+All modules are free to create their own subdirectories within this shared directory. For example:
+
+```text
+Root/
+├── evidences/       # Incident Management
+├── WhiteboardLogs/  # Whiteboard
+└── ...
+```
+
+It is the responsibility of each respective module to read, write, save, modify, and delete files within its directory under `Root`.
+
+The FileSync module works independently and synchronizes all files and folders within `Root` across the connected systems. This includes files and folders that are created, modified, or deleted.
+
+---
+
+## FileSync API
+
+FileSync provides a simple interface for other modules to access the common shared directory.
+
+```csharp
+public interface ISync
+{
+    string GetDirectory();
+}
+```
+
+`GetDirectory()` returns the path to the common shared directory on the current system.
+
+Other modules can use this directory to create and manage their own files and folders.
+
+For example:
+
+```csharp
+ISync fileSync = new FileSync();
+
+string rootDirectory = fileSync.GetDirectory();
+
+string evidenceDirectory =
+    Path.Combine(rootDirectory, "evidences");
+```
+
+**NOTE** : *Each module is responsible for managing its own files inside the shared directory. FileSync handles the synchronization of the contents of the shared directory between systems.*
+
+---
