@@ -14,13 +14,20 @@ public class ScreenCapturer : IImageSource
 
     public Bitmap Capture()
     {
-        var bounds = new Rectangle(0,0,GetSystemMetrics(SM_CXSCREEN),GetSystemMetrics(SM_CYSCREEN));
+        var bounds = new Rectangle(
+            0,
+            0,
+            GetSystemMetrics(SM_CXSCREEN),
+            GetSystemMetrics(SM_CYSCREEN));
 
-        var screenshot = new Bitmap(bounds.Width,bounds.Height,PixelFormat.Format32bppArgb);
+        var screenshot = new Bitmap(
+            bounds.Width,
+            bounds.Height,
+            PixelFormat.Format32bppArgb);
 
         using (Graphics graphics = Graphics.FromImage(screenshot))
         {
-            graphics.CopyFromScreen(bounds.Location,Point.Empty,bounds.Size);
+            graphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
         }
 
         return screenshot;

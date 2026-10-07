@@ -4,45 +4,41 @@ namespace ScreenShare;
 
 public class ScreenSharingService
 {
-    private readonly IImageSource imageSource;
+    private readonly IImageSource _imageSource;
 
-    private readonly IImageDiffer imageDiffer;
+    private readonly IImageDiffer _imageDiffer;
 
-    private Bitmap? previousFrame;
+    private Bitmap? _previousFrame;
 
-    public ScreenSharingService(IImageSource imageSource,IImageDiffer imageDiffer)
+    public ScreenSharingService(IImageSource imageSource, IImageDiffer imageDiffer)
     {
-        this.imageSource = imageSource;
-        this.imageDiffer = imageDiffer;
+        _imageSource = imageSource;
+        _imageDiffer = imageDiffer;
     }
 
     public ImageDiffResult ProcessFrame()
     {
-        Bitmap currentFrame =
-            imageSource.Capture();
+        Bitmap currentFrame = _imageSource.Capture();
 
-        
-         // first frame has nothing to compare against. therefore the first frame must be treated as a full frame.
-         
-        if (previousFrame == null)
+        // First frame has nothing to compare against.
+        // Therefore, the first frame must be treated as a full frame.
+        if (_previousFrame == null)
         {
-            previousFrame =new Bitmap(currentFrame);
+            _previousFrame = new Bitmap(currentFrame);
 
-            //currentFrame.Dispose();
+            // currentFrame.Dispose();
 
-            return ImageDiffResult.CreateFullFrame(new Bitmap(previousFrame));
+            return ImageDiffResult.CreateFullFrame(new Bitmap(_previousFrame));
         }
 
-        ImageDiffResult result =imageDiffer.Compare(previousFrame,currentFrame);
+        ImageDiffResult result = _imageDiffer.Compare(_previousFrame, currentFrame);
 
-        
-        //current frame becomes the base frame for the next comparison.
-         
+        // Current frame becomes the base frame for the next comparison.
         Bitmap newPreviousFrame = new Bitmap(currentFrame);
 
-        previousFrame.Dispose();
+        _previousFrame.Dispose();
 
-        previousFrame =newPreviousFrame;
+        _previousFrame = newPreviousFrame;
 
         currentFrame.Dispose();
 
@@ -51,8 +47,8 @@ public class ScreenSharingService
 
     public void Reset()
     {
-        previousFrame?.Dispose();
+        _previousFrame?.Dispose();
 
-        previousFrame = null;
+        _previousFrame = null;
     }
 }
