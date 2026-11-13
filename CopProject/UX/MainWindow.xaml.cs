@@ -6,6 +6,9 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Chat;
 using Cloud.Persistence;
+using Cloud.Networking;
+using Cloud.UI.ViewModels;
+using Cloud.UI.Views;
 using FileSynchroniser.Models;
 using FileSynchroniser.Views;
 using Incidents;
@@ -50,6 +53,10 @@ public sealed partial class MainWindow : Window
     private ChatClientAdapter? _chatAdapter;
     private ChatPanelViewModel? _chatViewModel;
 
+    // CLOUD TEAM: created on first visit to the Cloud page and kept, so the connection
+    // and the notification list survive pressing Back and coming back.
+    private NotificationServiceViewModel? _cloudViewModel;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -79,9 +86,14 @@ public sealed partial class MainWindow : Window
         _session.MeetingEnding += DisposeChatSession;
         _session.ParticipantsChanged += participants => {
             if (_inMeeting && !_isHost && _chatViewModel is null && participants.Any(participant => participant.IsHost))
+            {
                 DispatcherQueue.TryEnqueue(() => TryInitializeChatSession(false));
+            }
         };
         Closed += (_, _) => DisposeChatSession();
+
+        // CLOUD TEAM: close the server connection when the app closes.
+        Closed += async (_, _) => await ResetCloudAsync();
 
         ShowScreen("login");
     }
@@ -274,9 +286,52 @@ public sealed partial class MainWindow : Window
     private void ChatBtn_Click(object sender, RoutedEventArgs e)
     {
         if (ChatBtn.IsChecked == true)
+        {
             TryInitializeChatSession(_isHost);
+        }
 
         ShowChat(ChatBtn.IsChecked == true);
+    }
+
+
+    private async void Cloud_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            EnsureCloudView();
+            ShowScreen("cloud");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Unable to load cloud", ex.Message);
+        }
+    }
+
+    /// <summary>Builds the Notification Service page the first time it is needed.</summary>
+    private void EnsureCloudView()
+    {
+        if (_cloudViewModel is not null)
+        {
+            return;
+        }
+
+        // Must run on the UI thread (it does: this is called from a click handler).
+        _cloudViewModel = new NotificationServiceViewModel(MessengerFactory.GetMessenger);
+        CloudHost.Children.Add(new NotificationServiceView(_cloudViewModel));
+    }
+
+    /// <summary>Closes the connection and removes the page; the next visit builds a fresh one.</summary>
+    private async Task ResetCloudAsync()
+    {
+        NotificationServiceViewModel? viewModel = _cloudViewModel;
+        if (viewModel is null)
+        {
+            return;
+        }
+
+        _cloudViewModel = null;
+        CloudHost.Children.Clear();
+        await viewModel.DisposeAsync();
     }
 
     private void ShowChat(bool show)
@@ -288,11 +343,15 @@ public sealed partial class MainWindow : Window
     private void TryInitializeChatSession(bool isHost)
     {
         if (_chatViewModel is not null)
+        {
             return;
+        }
 
         IControllerService? controller = _meetingService.ActiveController;
         if (controller?.Communicator is null || controller.CurrentUser is null)
+        {
             return;
+        }
 
         try
         {
@@ -305,7 +364,9 @@ public sealed partial class MainWindow : Window
 
             // A participant needs the host's username before the local room is valid.
             if (string.IsNullOrWhiteSpace(hostName))
+            {
                 return;
+            }
 
             var room = new Chatroom($"{_meetingId}:{_meetingPort}", hostName);
 
@@ -323,7 +384,9 @@ public sealed partial class MainWindow : Window
                 if (!IPAddress.TryParse(hostIp, out IPAddress? address)
                     || address is null
                     || !int.TryParse(_meetingPort, out int port))
+                {
                     return;
+                }
 
                 _chatClient = new ChatClient(username, room, controller.Communicator, new IPEndPoint(address, port));
                 _chatAdapter = new ChatClientAdapter(_chatClient, DispatcherQueue);
@@ -507,11 +570,6 @@ public sealed partial class MainWindow : Window
             CloseButtonText = "OK",
             XamlRoot = Root.XamlRoot
         }.ShowAsync();
-    }
-
-    private void Cloud_Click(object sender, RoutedEventArgs e)
-    {
-        ShowScreen("cloud");
     }
 
     private void IncidentsBack_Click(object sender, RoutedEventArgs e)
