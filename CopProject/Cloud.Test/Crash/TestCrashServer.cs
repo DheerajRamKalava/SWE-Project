@@ -110,6 +110,7 @@ public class TestCrashServer
         groups.FailGetAllKeys = true;
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => service.GetGroupsAsync());
         Assert.AreEqual(0, service.GetPendingCount());
+        Assert.HasCount(0, service.GetPendingReports());
         Assert.AreEqual(0, await service.RetryPendingAsync());
     }
 
@@ -126,6 +127,7 @@ public class TestCrashServer
         CrashReportService service = new(new InMemoryStorage(), new InMemoryStorage(), new CrashPendingUploader(store, new FakeUploader()));
 
         Assert.AreEqual(1, service.GetPendingCount());
+        Assert.HasCount(1, service.GetPendingReports());
         Assert.AreEqual(1, await service.RetryPendingAsync());
         Assert.AreEqual(0, service.GetPendingCount());
     }
@@ -138,6 +140,7 @@ public class TestCrashServer
     {
         FakeCrashReportService fake = new() {
             Pending = 2,
+            PendingReports = [Samples.Report()],
             Groups = [Samples.Group(Samples.Report()), Samples.Group(Samples.Report("System.IO.IOException", "Read", "Networking"))]
         };
         CrashDashboardViewModel vm = new(fake);
@@ -149,6 +152,11 @@ public class TestCrashServer
         Assert.IsTrue(vm.HasPending);
         Assert.IsTrue(vm.PendingMessage.StartsWith("2", StringComparison.Ordinal));
         Assert.HasCount(3, vm.ModuleOptions);
+        Assert.HasCount(1, vm.PendingReports);
+        Assert.IsTrue(vm.HasPendingReports);
+        Assert.AreEqual("InvalidOperationException", vm.PendingReports[0].ExceptionTypeText);
+        Assert.AreEqual("Saved on this device", vm.PendingReports[0].StatusText);
+        Assert.IsFalse(string.IsNullOrEmpty(vm.PendingReports[0].TopFrame));
 
         vm.SelectedModule = "Networking";
         Assert.HasCount(1, vm.Groups);
@@ -172,6 +180,39 @@ public class TestCrashServer
         fake.Fail = true;
         await vm.LoadAsync();
         Assert.IsTrue(vm.HasError);
+    }
+
+    /// <summary>
+    /// The test-crash command reports through the handler and shows the report as local or uploaded.
+    /// </summary>
+    [TestMethod]
+    public async Task DashboardReportsTestCrash()
+    {
+        Assert.AreEqual("The crash handler is not installed.", await RunWithoutHandler());
+
+        using TempDir dir = new();
+        LocalCrashStore store = new(dir.Path);
+        FakeUploader uploader = new() { Behavior = () => Task.FromResult(false) };
+        using CrashHandler handler = new(store, uploader);
+        CrashReportService service = new(new InMemoryStorage(), new InMemoryStorage(), handler.PendingUploader);
+        CrashDashboardViewModel vm = new(service, handler);
+
+        await vm.ReportTestCrashCommand.ExecuteAsync();
+        Assert.HasCount(1, vm.PendingReports);
+        Assert.IsTrue(vm.StatusMessage.Contains("saved on this device", StringComparison.Ordinal));
+        Assert.IsTrue(vm.HasStatus);
+
+        uploader.Behavior = () => Task.FromResult(true);
+        await vm.ReportTestCrashAsync();
+        Assert.HasCount(1, vm.PendingReports);
+        Assert.IsTrue(vm.StatusMessage.Contains("uploaded to the cloud", StringComparison.Ordinal));
+    }
+
+    private static async Task<string> RunWithoutHandler()
+    {
+        CrashDashboardViewModel vm = new(new FakeCrashReportService());
+        await vm.ReportTestCrashAsync();
+        return vm.StatusMessage;
     }
 
     /// <summary>

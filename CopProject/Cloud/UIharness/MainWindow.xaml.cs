@@ -22,14 +22,14 @@ public sealed partial class MainWindow : Window
 
     private async Task ShowDashboardAsync()
     {
-        ICrashReportService service = SampleCrashReportService.Create();
+        CrashHandler handler = CrashHandler.Install();
+        ICrashReportService service = SampleCrashReportService.Create(handler.PendingUploader);
 
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("COSMOS_KEY")))
         {
             try
             {
-                CrashPendingUploader pending = new(new LocalCrashStore(), new CosmosCrashUploader());
-                service = await CrashReportService.CreateAsync(pending);
+                service = await CrashReportService.CreateAsync(handler.PendingUploader);
             }
             catch (Exception)
             {

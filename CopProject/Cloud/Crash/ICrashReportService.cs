@@ -21,6 +21,12 @@ public interface ICrashReportService
     Task<IReadOnlyList<CrashReport>> GetReportsAsync(CrashGroup group, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the reports saved on this device that have not been uploaded, newest first.
+    /// </summary>
+    /// <returns>The pending reports.</returns>
+    IReadOnlyList<CrashReport> GetPendingReports();
+
+    /// <summary>
     /// Gets the number of reports saved on this device that have not been uploaded.
     /// </summary>
     /// <returns>The count.</returns>

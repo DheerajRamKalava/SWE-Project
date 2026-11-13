@@ -12,17 +12,21 @@ public sealed class SampleCrashReportService : ICrashReportService
     private readonly List<CrashReport> _reports = [];
     private readonly List<CrashGroup> _groups = [];
 
-    private SampleCrashReportService()
+    private readonly CrashPendingUploader _pending;
+
+    private SampleCrashReportService(CrashPendingUploader pending)
     {
+        _pending = pending;
     }
 
     /// <summary>
-    /// Creates a service with sample data.
+    /// Creates a service with sample groups; pending reports come from the real local folder.
     /// </summary>
+    /// <param name="pending">The uploader of the real local pending reports.</param>
     /// <returns>The service.</returns>
-    public static SampleCrashReportService Create()
+    public static SampleCrashReportService Create(CrashPendingUploader pending)
     {
-        SampleCrashReportService service = new();
+        SampleCrashReportService service = new(pending);
         service.Add("System.NullReferenceException", "Chat", "Chat.ChatServer", "HandleOperation", 4);
         service.Add("System.IO.IOException", "FileSynchroniser", "FileSynchroniser.FileWatcher", "Sync", 2);
         service.Add("System.Net.Sockets.SocketException", "Networking", "Networking.ReceivingQueueListener", "ListenOnQueue", 6);
@@ -48,15 +52,21 @@ public sealed class SampleCrashReportService : ICrashReportService
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<CrashReport> GetPendingReports()
+    {
+        return _pending.GetPendingReports();
+    }
+
+    /// <inheritdoc />
     public int GetPendingCount()
     {
-        return 2;
+        return _pending.PendingCount;
     }
 
     /// <inheritdoc />
     public Task<int> RetryPendingAsync(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(0);
+        return _pending.FlushAsync(cancellationToken);
     }
 
     private void Add(string exceptionType, string assembly, string type, string method, int times)

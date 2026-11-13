@@ -96,6 +96,12 @@ public sealed class CrashReportService : ICrashReportService
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<CrashReport> GetPendingReports()
+    {
+        return _pending?.GetPendingReports() ?? [];
+    }
+
+    /// <inheritdoc />
     public int GetPendingCount()
     {
         return _pending?.PendingCount ?? 0;

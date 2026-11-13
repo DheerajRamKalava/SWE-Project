@@ -19,8 +19,7 @@ public partial class App : Application
     {
         InitializeComponent();
         CrashHandler.Install();
-        UnhandledException += (_, e) => CrashHandler.Current?.Report(e.Exception, isFatal: true, source: "WinUI");
-
+        UnhandledException += (_, e) => CrashHandler.Current?.Report(e.Exception, true, "WinUI");
     }
 
     /// <inheritdoc />

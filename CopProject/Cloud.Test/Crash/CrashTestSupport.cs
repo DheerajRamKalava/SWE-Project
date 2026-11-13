@@ -174,6 +174,8 @@ internal sealed class FakeCrashReportService : ICrashReportService
 
     public List<CrashReport> Reports { get; set; } = [];
 
+    public List<CrashReport> PendingReports { get; set; } = [];
+
     public bool Fail { get; set; }
 
     public int Pending { get; set; }
@@ -188,6 +190,11 @@ internal sealed class FakeCrashReportService : ICrashReportService
     public Task<IReadOnlyList<CrashReport>> GetReportsAsync(CrashGroup group, CancellationToken cancellationToken = default)
     {
         return Fail ? throw new InvalidOperationException("down") : Task.FromResult<IReadOnlyList<CrashReport>>(Reports);
+    }
+
+    public IReadOnlyList<CrashReport> GetPendingReports()
+    {
+        return PendingReports;
     }
 
     public int GetPendingCount()

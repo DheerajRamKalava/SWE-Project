@@ -13,6 +13,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public const string AllOption = "All";
 
     private readonly ICrashReportService _service;
+    private readonly CrashHandler? _handler;
     private List<CrashGroup> _allGroups = [];
     private string _searchText = string.Empty;
     private string _selectedCategory = AllOption;
@@ -27,11 +28,14 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     /// Creates the view model.
     /// </summary>
     /// <param name="service">The service that reads crash data.</param>
-    public CrashDashboardViewModel(ICrashReportService service)
+    /// <param name="handler">The handler used by the test-crash button; defaults to <see cref="CrashHandler.Current"/>.</param>
+    public CrashDashboardViewModel(ICrashReportService service, CrashHandler? handler = null)
     {
         ArgumentNullException.ThrowIfNull(service);
 
         _service = service;
+        _handler = handler;
+        ReportTestCrashCommand = new AsyncRelayCommand(ReportTestCrashAsync);
         CategoryOptions = [AllOption, .. Enum.GetNames<CrashCategory>()];
         RefreshCommand = new AsyncRelayCommand(LoadAsync);
         RetryPendingCommand = new AsyncRelayCommand(RetryPendingAsync);
@@ -42,6 +46,21 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     /// Gets the groups that match the current filters.
     /// </summary>
     public ObservableCollection<CrashGroupItem> Groups { get; } = [];
+
+    /// <summary>
+    /// Gets the reports that are saved on this device and not yet uploaded.
+    /// </summary>
+    public ObservableCollection<CrashReportItem> PendingReports { get; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether any report is saved only on this device.
+    /// </summary>
+    public bool HasPendingReports => PendingReports.Count > 0;
+
+    /// <summary>
+    /// Gets the command that reports a test crash without closing the app.
+    /// </summary>
+    public AsyncRelayCommand ReportTestCrashCommand { get; }
 
     /// <summary>
     /// Gets the category filter choices.
@@ -78,8 +97,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public string SearchText
     {
         get => _searchText;
-        set
-        {
+        set {
             if (SetProperty(ref _searchText, value ?? string.Empty))
             {
                 ApplyFilters();
@@ -93,8 +111,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public string SelectedCategory
     {
         get => _selectedCategory;
-        set
-        {
+        set {
             if (value is not null && SetProperty(ref _selectedCategory, value))
             {
                 ApplyFilters();
@@ -108,8 +125,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public string SelectedModule
     {
         get => _selectedModule;
-        set
-        {
+        set {
             if (value is not null && SetProperty(ref _selectedModule, value))
             {
                 ApplyFilters();
@@ -123,8 +139,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public bool IsLoading
     {
         get => _isLoading;
-        private set
-        {
+        private set {
             if (SetProperty(ref _isLoading, value))
             {
                 OnPropertyChanged(nameof(IsEmpty));
@@ -138,8 +153,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public string ErrorMessage
     {
         get => _errorMessage;
-        private set
-        {
+        private set {
             if (SetProperty(ref _errorMessage, value))
             {
                 OnPropertyChanged(nameof(HasError));
@@ -158,8 +172,18 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public string StatusMessage
     {
         get => _statusMessage;
-        private set => SetProperty(ref _statusMessage, value);
+        private set {
+            if (SetProperty(ref _statusMessage, value))
+            {
+                OnPropertyChanged(nameof(HasStatus));
+            }
+        }
     }
+
+    /// <summary>
+    /// Gets a value indicating whether there is a status message to show.
+    /// </summary>
+    public bool HasStatus => !string.IsNullOrWhiteSpace(StatusMessage);
 
     /// <summary>
     /// Gets the number of reports saved on this device that have not been uploaded.
@@ -167,8 +191,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
     public int PendingCount
     {
         get => _pendingCount;
-        private set
-        {
+        private set {
             if (SetProperty(ref _pendingCount, value))
             {
                 OnPropertyChanged(nameof(HasPending));
@@ -205,6 +228,7 @@ public sealed class CrashDashboardViewModel : ViewModelBase
         {
             _allGroups = (await _service.GetGroupsAsync()).ToList();
             PendingCount = _service.GetPendingCount();
+            LoadPending();
             RebuildModuleOptions();
             ApplyFilters();
         }
@@ -237,6 +261,35 @@ public sealed class CrashDashboardViewModel : ViewModelBase
         }
 
         PendingCount = _service.GetPendingCount();
+        LoadPending();
+    }
+
+    /// <summary>
+    /// Reports a test crash through the crash handler without closing the app, then refreshes the local list.
+    /// </summary>
+    /// <returns>A task that completes when the report is done.</returns>
+    public async Task ReportTestCrashAsync()
+    {
+        CrashHandler? handler = _handler ?? CrashHandler.Current;
+
+        if (handler is null)
+        {
+            StatusMessage = "The crash handler is not installed.";
+            return;
+        }
+
+        CrashReportOutcome outcome = await Task.Run(
+            () => handler.Report(new InvalidOperationException("Deliberate test crash from the dashboard"), false, "Dashboard"));
+
+        StatusMessage = outcome switch {
+            CrashReportOutcome.Uploaded => "Test crash uploaded to the cloud. It shows under the uploaded groups once Azure has processed it.",
+            CrashReportOutcome.SavedLocally => "The test crash could not be uploaded and is saved on this device.",
+            CrashReportOutcome.Skipped => "The test crash was skipped because the report limit was reached.",
+            _ => "The test crash could not be reported."
+        };
+
+        PendingCount = _service.GetPendingCount();
+        LoadPending();
     }
 
     /// <summary>
@@ -247,6 +300,18 @@ public sealed class CrashDashboardViewModel : ViewModelBase
         SearchText = string.Empty;
         SelectedCategory = AllOption;
         SelectedModule = AllOption;
+    }
+
+    private void LoadPending()
+    {
+        PendingReports.Clear();
+
+        foreach (CrashReport report in _service.GetPendingReports())
+        {
+            PendingReports.Add(new CrashReportItem(report));
+        }
+
+        OnPropertyChanged(nameof(HasPendingReports));
     }
 
     private void RebuildModuleOptions()

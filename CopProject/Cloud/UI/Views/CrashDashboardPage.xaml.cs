@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Cloud.Crash;
 using Cloud.Crash.ViewModels;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace Cloud.UI.Views;
@@ -43,6 +45,12 @@ public sealed partial class CrashDashboardPage : Page
         Bindings.Update();
 
         await viewModel.LoadAsync();
+    }
+
+    private void CrashApp_Click(object _, RoutedEventArgs __)
+    {
+        // A real crash: WinUI passes this to the application's UnhandledException handler, which reports it.
+        throw new InvalidOperationException("Deliberate crash from the dashboard");
     }
 
     private void Group_ItemClick(object _, ItemClickEventArgs e)

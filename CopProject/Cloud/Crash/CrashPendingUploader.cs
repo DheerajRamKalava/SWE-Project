@@ -29,6 +29,29 @@ public sealed class CrashPendingUploader
     public int PendingCount => _store.PendingCount;
 
     /// <summary>
+    /// Reads the reports waiting for upload. Unreadable files are skipped.
+    /// </summary>
+    /// <returns>The pending reports, newest first.</returns>
+    public IReadOnlyList<CrashReport> GetPendingReports()
+    {
+        List<CrashReport> reports = [];
+
+        foreach (string path in _store.GetPendingFiles())
+        {
+            try
+            {
+                reports.Add(CrashXmlSerializer.Deserialize<CrashReport>(_store.Read(path)));
+            }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                // Unreadable files are dealt with by the next flush.
+            }
+        }
+
+        return reports.OrderByDescending(report => report.TimestampUtc.ToUniversalTime()).ToList();
+    }
+
+    /// <summary>
     /// Uploads pending reports, oldest first, and deletes each one after it arrived. Stops at the first failed
     /// upload (the machine is probably offline) and leaves the rest for next time. Unreadable files are set aside.
     /// If another flush is already running this returns immediately.
