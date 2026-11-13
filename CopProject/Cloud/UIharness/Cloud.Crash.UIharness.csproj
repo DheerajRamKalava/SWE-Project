@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\UI\Cloud.UI.csproj" />
+    <ProjectReference Include="..\UI\Cloud.Crash.UI.csproj" />
   </ItemGroup>
 
 </Project>
