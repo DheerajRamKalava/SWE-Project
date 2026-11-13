@@ -12,9 +12,10 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>
 
-    <ItemGroup>
-        <InternalsVisibleTo Include="Cloud.Test" />
-    </ItemGroup>
+  <ItemGroup>
+     <InternalsVisibleTo Include="Cloud.Test" />
+     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
 
     <ItemGroup>
         <Compile Remove="Functions\**;UI\**;UIharness\**" />
