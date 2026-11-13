@@ -39,7 +39,7 @@ public class TestCrashServer
 
         CrashGroup group = CrashXmlSerializer.Deserialize<CrashGroup>((await storage.Read(Key(first))).Data);
         Assert.AreEqual(2, group.Count);
-        Assert.HasCount(2, (await storage.GetAllKeys()).Keys);
+        Assert.HasCount(2, (await storage.GetAllKeys()).Item2);
     }
 
     /// <summary>
@@ -61,8 +61,7 @@ public class TestCrashServer
 
         InMemoryStorage racing = new();
         CrashReport winner = Samples.Report();
-        racing.BeforeCreate = key =>
-        {
+        racing.BeforeCreate = key => {
             racing.BeforeCreate = null;
             racing.Put(key, CrashXmlSerializer.Serialize(Samples.Group(winner)));
         };

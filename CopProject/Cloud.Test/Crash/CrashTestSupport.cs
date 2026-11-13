@@ -66,7 +66,7 @@ internal sealed class InMemoryStorage : IStorage
         return Task.FromResult(_items.TryGetValue(key, out (byte[] Data, int Version) item) ? (true, item.Data) : (false, []));
     }
 
-    public Task<(bool Success, Dictionary<string, byte[]> Data)> ReadAll(string[] keys)
+    public Task<(bool Success, Dictionary<string, byte[]>)> ReadAll(string[] keys)
     {
         return Task.FromResult((true, _items.Where(i => keys.Contains(i.Key)).ToDictionary(i => i.Key, i => i.Value.Data)));
     }
@@ -93,7 +93,7 @@ internal sealed class InMemoryStorage : IStorage
         return Task.FromResult(_items.Remove(key));
     }
 
-    public Task<(bool Success, List<string> Keys)> GetAllKeys()
+    public Task<(bool Success, List<string>)> GetAllKeys()
     {
         return Task.FromResult((!FailGetAllKeys, _items.Keys.ToList()));
     }
@@ -101,6 +101,64 @@ internal sealed class InMemoryStorage : IStorage
     public Task<(bool Success, string Etag)> ReadEtag(string key)
     {
         return Task.FromResult(_items.TryGetValue(key, out (byte[] Data, int Version) item) ? (true, item.Version.ToString()) : (false, string.Empty));
+    }
+
+    public Task<bool> CreateAll(Dictionary<string, byte[]> items)
+    {
+        if (items.Keys.Any(_items.ContainsKey))
+        {
+            return Task.FromResult(false);
+        }
+
+        foreach ((string key, byte[] data) in items)
+        {
+            _items[key] = (data, 1);
+        }
+
+        return Task.FromResult(true);
+    }
+
+    public Task<(bool Success, Dictionary<string, string>)> ReadAllEtags()
+    {
+        return Task.FromResult((true, _items.ToDictionary(i => i.Key, i => i.Value.Version.ToString())));
+    }
+
+    public Task<(bool Success, Dictionary<string, string> Etags)> ReadEtags(string[] keys)
+    {
+        return Task.FromResult((true, _items.Where(i => keys.Contains(i.Key)).ToDictionary(i => i.Key, i => i.Value.Version.ToString())));
+    }
+
+    public Task<bool> UpdateAll(Dictionary<string, byte[]> items, Dictionary<string, string> etags)
+    {
+        foreach (string key in items.Keys)
+        {
+            if (!_items.TryGetValue(key, out (byte[] Data, int Version) item) || !etags.TryGetValue(key, out string? etag) || item.Version.ToString() != etag)
+            {
+                return Task.FromResult(false);
+            }
+        }
+
+        foreach ((string key, byte[] data) in items)
+        {
+            _items[key] = (data, _items[key].Version + 1);
+        }
+
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> DeleteAll(string[] keys)
+    {
+        foreach (string key in keys)
+        {
+            _items.Remove(key);
+        }
+
+        return Task.FromResult(true);
+    }
+
+    public Task<(bool Success, Dictionary<string, byte[]> Items)> ReadLatest(int n)
+    {
+        return Task.FromResult((true, _items.TakeLast(n).ToDictionary(i => i.Key, i => i.Value.Data)));
     }
 
     public Task Put(string key, byte[] data)

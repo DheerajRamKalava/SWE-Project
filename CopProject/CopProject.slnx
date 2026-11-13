@@ -15,6 +15,13 @@
     <Project Path="Cloud.Networking.Server/Cloud.Networking.Server.csproj" />
     <Project Path="Cloud.Test/Cloud.Test.csproj" />
     <Project Path="Cloud/Cloud.csproj" />
+    <Project Path="Cloud/UI/Cloud.UI.csproj" />
+
+   <Project Path="Cloud/UIharness/Cloud.UIharness.csproj">
+     <Platform Solution="*|x64" Project="x64" />
+     <Platform Solution="Debug|Any CPU" Project="x64" />
+   </Project>
+   <Project Path="Cloud/Functions/Cloud.Functions.csproj" />
     <Project Path="Controller/Controller.csproj" />
     <Project Path="Filesync.Test/Filesync.Test.csproj" />
     <Project Path="FileSynchroniser.UIharness/FileSynchroniser.UIharness.csproj" Id="2420b872-bb5a-44b9-a6d0-65bebf0c022e">
