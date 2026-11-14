@@ -1,4 +1,5 @@
-﻿using Cloud.Crash;
+﻿using System.Diagnostics;
+using Cloud.Crash;
 using Cloud.Persistence;
 
 namespace Cloud.Test.Crash;
@@ -29,6 +30,7 @@ internal sealed class FakeUploader : ICrashUploader
 
     public Task<bool> UploadAsync(Guid reportId, byte[] reportXml, CancellationToken cancellationToken)
     {
+        Trace.TraceInformation($"FakeUploader.UploadAsync: received report {reportId}.");
         lock (Uploaded)
         {
             Uploaded.Add(reportXml);
@@ -50,10 +52,12 @@ internal sealed class InMemoryStorage : IStorage
 
     public Task<bool> Create(string key, byte[] data)
     {
+        Trace.TraceInformation($"InMemoryStorage.Create: creating key '{key}'.");
         BeforeCreate?.Invoke(key);
 
         if (_items.ContainsKey(key))
         {
+            Trace.TraceWarning($"InMemoryStorage.Create: key '{key}' already exists.");
             return Task.FromResult(false);
         }
 
@@ -63,6 +67,7 @@ internal sealed class InMemoryStorage : IStorage
 
     public Task<(bool Success, byte[] Data)> Read(string key)
     {
+        Trace.TraceInformation($"InMemoryStorage.Read: reading key '{key}'.");
         return Task.FromResult(_items.TryGetValue(key, out (byte[] Data, int Version) item) ? (true, item.Data) : (false, []));
     }
 
@@ -73,14 +78,17 @@ internal sealed class InMemoryStorage : IStorage
 
     public Task<bool> Update(string key, byte[] data, string etag)
     {
+        Trace.TraceInformation($"InMemoryStorage.Update: updating key '{key}'.");
         if (FailNextUpdates > 0)
         {
             FailNextUpdates--;
+            Trace.TraceWarning($"InMemoryStorage.Update: simulated failure for key '{key}'.");
             return Task.FromResult(false);
         }
 
         if (!_items.TryGetValue(key, out (byte[] Data, int Version) item) || item.Version.ToString() != etag)
         {
+            Trace.TraceWarning($"InMemoryStorage.Update: ETag conflict for key '{key}'.");
             return Task.FromResult(false);
         }
 
@@ -95,11 +103,13 @@ internal sealed class InMemoryStorage : IStorage
 
     public Task<(bool Success, List<string>)> GetAllKeys()
     {
+        Trace.TraceInformation("InMemoryStorage.GetAllKeys: listing keys.");
         return Task.FromResult((!FailGetAllKeys, _items.Keys.ToList()));
     }
 
     public Task<(bool Success, string Etag)> ReadEtag(string key)
     {
+        Trace.TraceInformation($"InMemoryStorage.ReadEtag: reading ETag for key '{key}'.");
         return Task.FromResult(_items.TryGetValue(key, out (byte[] Data, int Version) item) ? (true, item.Version.ToString()) : (false, string.Empty));
     }
 
@@ -184,11 +194,13 @@ internal sealed class FakeCrashReportService : ICrashReportService
 
     public Task<IReadOnlyList<CrashGroup>> GetGroupsAsync(CancellationToken cancellationToken = default)
     {
+        Trace.TraceInformation("FakeCrashReportService.GetGroupsAsync: returning fake groups.");
         return Fail ? throw new InvalidOperationException("down") : Task.FromResult<IReadOnlyList<CrashGroup>>(Groups);
     }
 
     public Task<IReadOnlyList<CrashReport>> GetReportsAsync(CrashGroup group, CancellationToken cancellationToken = default)
     {
+        Trace.TraceInformation("FakeCrashReportService.GetReportsAsync: returning fake reports.");
         return Fail ? throw new InvalidOperationException("down") : Task.FromResult<IReadOnlyList<CrashReport>>(Reports);
     }
 
@@ -204,6 +216,7 @@ internal sealed class FakeCrashReportService : ICrashReportService
 
     public Task<int> RetryPendingAsync(CancellationToken cancellationToken = default)
     {
+        Trace.TraceInformation("FakeCrashReportService.RetryPendingAsync: returning fake retry result.");
         return Fail ? throw new InvalidOperationException("down") : Task.FromResult(RetryResult);
     }
 }

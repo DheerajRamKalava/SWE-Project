@@ -1,4 +1,6 @@
-﻿namespace Cloud.Crash;
+﻿using System.Diagnostics;
+
+namespace Cloud.Crash;
 
 /// <summary>
 /// Adds uploaded crash reports to their groups. This is what runs on Azure: the Function passes it each new report.
@@ -37,6 +39,7 @@ public sealed class CrashIngestionService
     public async Task<CrashProcessResult> ProcessAsync(byte[] reportXml)
     {
         ArgumentNullException.ThrowIfNull(reportXml);
+        Trace.TraceInformation($"CrashIngestionService.ProcessAsync: processing report payload of {reportXml.Length} bytes.");
 
         CrashReport report;
 
@@ -44,18 +47,21 @@ public sealed class CrashIngestionService
         {
             report = CrashXmlSerializer.Deserialize<CrashReport>(reportXml);
         }
-        catch (InvalidDataException)
+        catch (InvalidDataException ex)
         {
+            Trace.TraceWarning($"CrashIngestionService.ProcessAsync: invalid report XML: {ex.Message}");
             return CrashProcessResult.Invalid;
         }
 
         CrashSignature signature = CrashFingerprinter.Analyze(report);
         string key = signature.Fingerprint;
+        Trace.TraceInformation($"CrashIngestionService.ProcessAsync: using fingerprint '{key}'.");
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             // Read the ETag before the data: if the group changes in between, the update below fails and we retry.
             (bool exists, string etag) = await _groups.ReadEtag(key).ConfigureAwait(false);
+            Trace.TraceInformation($"CrashIngestionService.ProcessAsync: attempt {attempt}; groupExists={exists}.");
 
             if (!exists)
             {
@@ -63,6 +69,7 @@ public sealed class CrashIngestionService
 
                 if (await _groups.Create(key, CrashXmlSerializer.Serialize(created)).ConfigureAwait(false))
                 {
+                    Trace.TraceInformation("CrashIngestionService.ProcessAsync: created a new crash group.");
                     return CrashProcessResult.Recorded;
                 }
             }
@@ -76,11 +83,13 @@ public sealed class CrashIngestionService
 
                     if (!replaced && !group.Record(report))
                     {
+                        Trace.TraceInformation("CrashIngestionService.ProcessAsync: duplicate report ignored.");
                         return CrashProcessResult.Duplicate;
                     }
 
                     if (await _groups.Update(key, CrashXmlSerializer.Serialize(group), etag).ConfigureAwait(false))
                     {
+                        Trace.TraceInformation("CrashIngestionService.ProcessAsync: updated the crash group.");
                         return CrashProcessResult.Recorded;
                     }
                 }
@@ -92,6 +101,7 @@ public sealed class CrashIngestionService
             }
         }
 
+        Trace.TraceWarning("CrashIngestionService.ProcessAsync: group update conflicted after all retry attempts.");
         return CrashProcessResult.Conflict;
     }
 
@@ -102,9 +112,10 @@ public sealed class CrashIngestionService
             replaced = false;
             return CrashXmlSerializer.Deserialize<CrashGroup>(data);
         }
-        catch (InvalidDataException)
+        catch (InvalidDataException ex)
         {
             // A corrupt group document would block this fingerprint forever, so start it again.
+            Trace.TraceWarning($"CrashIngestionService.ReadGroupOrReplace: replacing corrupt group data: {ex.Message}");
             replaced = true;
             return CrashGroup.FromReport(signature, report);
         }

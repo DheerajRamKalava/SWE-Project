@@ -41,20 +41,23 @@ public sealed class CosmosCrashUploader : ICrashUploader
 
             IStorage storage = await GetStorageAsync(cancellationToken).ConfigureAwait(false);
             string key = reportId.ToString("D");
+            Trace.TraceInformation($"CosmosCrashUploader.UploadAsync: uploading report {reportId}.");
 
             if (await storage.Create(key, reportXml).ConfigureAwait(false))
             {
+                Trace.TraceInformation($"CosmosCrashUploader.UploadAsync: report {reportId} created.");
                 return true;
             }
 
             // Create fails for an existing key. That is fine: an earlier upload may have succeeded
             // before the local copy could be deleted.
             (bool found, _) = await storage.Read(key).ConfigureAwait(false);
+            Trace.TraceWarning($"CosmosCrashUploader.UploadAsync: report {reportId} already existed={found}.");
             return found;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[Cloud] CosmosCrashUploader: upload of {reportId} failed: {ex.Message}");
+            Trace.TraceError($"CosmosCrashUploader.UploadAsync: upload of {reportId} failed: {ex.Message}");
             return false;
         }
     }
@@ -66,6 +69,7 @@ public sealed class CosmosCrashUploader : ICrashUploader
         try
         {
             _storage ??= await _storageFactory().ConfigureAwait(false);
+            Trace.TraceInformation("CosmosCrashUploader.GetStorageAsync: storage initialized or reused.");
             return _storage;
         }
         finally

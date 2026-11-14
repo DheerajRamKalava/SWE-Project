@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Diagnostics;
 using System.Xml;
 using System.Xml.Serialization;
 
@@ -21,6 +22,7 @@ public static class CrashXmlSerializer
         where T : class
     {
         ArgumentNullException.ThrowIfNull(value);
+        Trace.TraceInformation($"CrashXmlSerializer.Serialize: serializing {typeof(T).Name}.");
 
         XmlWriterSettings settings = new() {
             Encoding = s_utf8,
@@ -68,10 +70,12 @@ public static class CrashXmlSerializer
                 throw new InvalidDataException("The crash XML was empty.");
             }
 
+            Trace.TraceInformation($"CrashXmlSerializer.Deserialize: deserialized {typeof(T).Name}.");
             return typed;
         }
         catch (Exception ex) when (ex is InvalidOperationException or XmlException)
         {
+            Trace.TraceWarning($"CrashXmlSerializer.Deserialize: invalid {typeof(T).Name} XML: {ex.Message}");
             throw new InvalidDataException("The crash XML is not valid.", ex);
         }
     }

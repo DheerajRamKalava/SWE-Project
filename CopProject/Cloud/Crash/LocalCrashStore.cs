@@ -74,6 +74,7 @@ public sealed class LocalCrashStore
         File.Move(tempPath, finalPath, overwrite: true);
 
         Prune();
+        Trace.TraceInformation($"LocalCrashStore.Save: saved report {report.Id}.");
         return finalPath;
     }
 
@@ -85,6 +86,7 @@ public sealed class LocalCrashStore
     {
         if (!Directory.Exists(DirectoryPath))
         {
+            Trace.TraceInformation("LocalCrashStore.GetPendingFiles: pending directory does not exist.");
             return [];
         }
 
@@ -100,6 +102,7 @@ public sealed class LocalCrashStore
     /// <returns>The file content.</returns>
     public byte[] Read(string path)
     {
+        Trace.TraceInformation($"LocalCrashStore.Read: reading pending file '{path}'.");
         return File.ReadAllBytes(path);
     }
 
@@ -115,7 +118,7 @@ public sealed class LocalCrashStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Trace.WriteLine($"[Cloud] LocalCrashStore: could not delete {path}: {ex.Message}");
+            Trace.TraceWarning($"LocalCrashStore.Delete: could not delete {path}: {ex.Message}");
         }
     }
 
@@ -131,7 +134,7 @@ public sealed class LocalCrashStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Trace.WriteLine($"[Cloud] LocalCrashStore: could not quarantine {path}: {ex.Message}");
+            Trace.TraceWarning($"LocalCrashStore.Quarantine: could not quarantine {path}: {ex.Message}");
         }
     }
 

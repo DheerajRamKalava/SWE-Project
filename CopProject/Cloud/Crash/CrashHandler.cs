@@ -86,10 +86,12 @@ public sealed class CrashHandler : IDisposable
         {
             if (s_current is not null)
             {
+                Trace.TraceInformation("CrashHandler.Install: reusing the existing crash handler.");
                 s_current.UserId = userId ?? s_current.UserId;
                 return s_current;
             }
 
+            Trace.TraceInformation("CrashHandler.Install: creating and attaching the crash handler.");
             handler = new CrashHandler(new LocalCrashStore(), new CosmosCrashUploader());
             handler.UserId = userId;
             handler.Attach();
@@ -108,12 +110,14 @@ public sealed class CrashHandler : IDisposable
     {
         if (_attached || _disposed)
         {
+            Trace.TraceWarning("CrashHandler.Attach: attach skipped because the handler is already attached or disposed.");
             return;
         }
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         _attached = true;
+        Trace.TraceInformation("CrashHandler.Attach: exception handlers attached.");
     }
 
     /// <summary>
@@ -129,6 +133,7 @@ public sealed class CrashHandler : IDisposable
 
         if (_disposed || s_isReporting || Interlocked.Increment(ref _reportCount) > MaxReportsPerSession)
         {
+            Trace.TraceWarning($"CrashHandler.Report: report skipped for source '{source}'.");
             return CrashReportOutcome.Skipped;
         }
 
@@ -136,6 +141,7 @@ public sealed class CrashHandler : IDisposable
 
         try
         {
+            Trace.TraceInformation($"CrashHandler.Report: building report for source '{source}', fatal={isFatal}.");
             CrashReport report = CrashReportBuilder.Build(exception, isFatal, source, UserId);
             byte[] xml = CrashXmlSerializer.Serialize(report);
 
@@ -149,14 +155,16 @@ public sealed class CrashHandler : IDisposable
                     _store.Delete(path);
                 }
 
+                Trace.TraceInformation($"CrashHandler.Report: report {report.Id} uploaded successfully.");
                 return CrashReportOutcome.Uploaded;
             }
 
+            Trace.TraceWarning($"CrashHandler.Report: report {report.Id} was not uploaded; localPathPresent={path is not null}.");
             return path is null ? CrashReportOutcome.Failed : CrashReportOutcome.SavedLocally;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[Cloud] CrashHandler: could not report {exception.GetType().Name}: {ex.Message}");
+            Trace.TraceError($"CrashHandler.Report: could not report {exception.GetType().Name}: {ex.Message}");
             return CrashReportOutcome.Failed;
         }
         finally
@@ -170,6 +178,7 @@ public sealed class CrashHandler : IDisposable
     /// </summary>
     public void FlushPendingInBackground()
     {
+        Trace.TraceInformation("CrashHandler.FlushPendingInBackground: starting a background flush.");
         _ = Task.Run(FlushQuietlyAsync);
     }
 
@@ -180,6 +189,7 @@ public sealed class CrashHandler : IDisposable
     {
         if (_disposed)
         {
+            Trace.TraceWarning("CrashHandler.Dispose: dispose skipped because the handler is already disposed.");
             return;
         }
 
@@ -199,10 +209,13 @@ public sealed class CrashHandler : IDisposable
                 s_current = null;
             }
         }
+
+        Trace.TraceInformation("CrashHandler.Dispose: exception handlers detached.");
     }
 
     internal void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
     {
+        Trace.TraceError($"CrashHandler.OnUnhandledException: unhandled exception received; terminating={e.IsTerminating}.");
         Exception exception = e.ExceptionObject as Exception
             ?? new InvalidOperationException("A non-exception object was thrown: " + e.ExceptionObject?.GetType().FullName);
 
@@ -211,6 +224,7 @@ public sealed class CrashHandler : IDisposable
 
     internal void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
     {
+        Trace.TraceError("CrashHandler.OnUnobservedTaskException: unobserved task exception received.");
         Report(e.Exception, false, "TaskScheduler");
     }
 
@@ -218,11 +232,12 @@ public sealed class CrashHandler : IDisposable
     {
         try
         {
+            Trace.TraceInformation("CrashHandler.FlushQuietlyAsync: flushing pending reports.");
             await PendingUploader.FlushAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[Cloud] CrashHandler: flushing pending reports failed: {ex.Message}");
+            Trace.TraceError($"CrashHandler.FlushQuietlyAsync: flushing pending reports failed: {ex.Message}");
         }
     }
 
@@ -230,11 +245,12 @@ public sealed class CrashHandler : IDisposable
     {
         try
         {
+            Trace.TraceInformation($"CrashHandler.TrySave: saving report {report.Id} locally.");
             return _store.Save(report, xml);
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[Cloud] CrashHandler: could not save report locally: {ex.Message}");
+            Trace.TraceError($"CrashHandler.TrySave: could not save report locally: {ex.Message}");
             return null;
         }
     }
@@ -243,6 +259,7 @@ public sealed class CrashHandler : IDisposable
     {
         try
         {
+            Trace.TraceInformation($"CrashHandler.TryUpload: uploading report {reportId} with a {_uploadTimeout} timeout.");
             CancellationTokenSource timeout = new(_uploadTimeout);
 
             // Task.Run keeps the upload off the crashing thread's synchronization context, so waiting here cannot deadlock.
@@ -259,7 +276,7 @@ public sealed class CrashHandler : IDisposable
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[Cloud] CrashHandler: upload failed: {ex.Message}");
+            Trace.TraceError($"CrashHandler.TryUpload: upload failed: {ex.Message}");
             return false;
         }
     }

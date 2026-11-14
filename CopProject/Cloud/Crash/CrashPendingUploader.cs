@@ -1,4 +1,6 @@
-﻿namespace Cloud.Crash;
+﻿using System.Diagnostics;
+
+namespace Cloud.Crash;
 
 /// <summary>
 /// Uploads the reports waiting in a <see cref="LocalCrashStore"/>.
@@ -35,6 +37,7 @@ public sealed class CrashPendingUploader
     public IReadOnlyList<CrashReport> GetPendingReports()
     {
         List<CrashReport> reports = [];
+        Trace.TraceInformation("CrashPendingUploader.GetPendingReports: reading pending reports.");
 
         foreach (string path in _store.GetPendingFiles())
         {
@@ -45,6 +48,7 @@ public sealed class CrashPendingUploader
             catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
             {
                 // Unreadable files are dealt with by the next flush.
+                Trace.TraceWarning($"CrashPendingUploader.GetPendingReports: skipped unreadable file: {ex.Message}");
             }
         }
 
@@ -62,12 +66,14 @@ public sealed class CrashPendingUploader
     {
         if (!await _flushLock.WaitAsync(0, cancellationToken).ConfigureAwait(false))
         {
+            Trace.TraceWarning("CrashPendingUploader.FlushAsync: another flush is already running.");
             return 0;
         }
 
         try
         {
             int uploaded = 0;
+            Trace.TraceInformation("CrashPendingUploader.FlushAsync: starting pending upload.");
 
             foreach (string path in _store.GetPendingFiles())
             {
@@ -83,16 +89,19 @@ public sealed class CrashPendingUploader
                 }
                 catch (InvalidDataException)
                 {
+                    Trace.TraceWarning($"CrashPendingUploader.FlushAsync: quarantining invalid report file '{path}'.");
                     _store.Quarantine(path);
                     continue;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
+                    Trace.TraceWarning($"CrashPendingUploader.FlushAsync: could not read '{path}': {ex.Message}");
                     continue;
                 }
 
                 if (!await _uploader.UploadAsync(report.Id, xml, cancellationToken).ConfigureAwait(false))
                 {
+                    Trace.TraceWarning($"CrashPendingUploader.FlushAsync: upload failed for report {report.Id}; stopping the flush.");
                     break;
                 }
 
@@ -105,6 +114,7 @@ public sealed class CrashPendingUploader
         finally
         {
             _flushLock.Release();
+            Trace.TraceInformation("CrashPendingUploader.FlushAsync: pending upload finished.");
         }
     }
 }

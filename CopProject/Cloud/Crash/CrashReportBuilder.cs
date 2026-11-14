@@ -34,6 +34,7 @@ public static class CrashReportBuilder
     public static CrashReport Build(Exception exception, bool isFatal, string source, string? userId = null)
     {
         ArgumentNullException.ThrowIfNull(exception);
+        Trace.TraceInformation($"CrashReportBuilder.Build: building report for {exception.GetType().Name}; fatal={isFatal}, source={source}.");
 
         CrashReport report = new() {
             IsFatal = isFatal,
@@ -52,6 +53,7 @@ public static class CrashReportBuilder
             current = current.InnerException;
         }
 
+        Trace.TraceInformation($"CrashReportBuilder.Build: captured {report.Exceptions.Count} exception levels.");
         return report;
     }
 
@@ -109,6 +111,7 @@ public static class CrashReportBuilder
         }
         catch (Exception ex)
         {
+            Trace.TraceWarning($"CrashReportBuilder.Safe: exception text was unavailable: {ex.Message}");
             return "(unavailable: " + ex.GetType().Name + ")";
         }
     }
