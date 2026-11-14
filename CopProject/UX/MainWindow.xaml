@@ -137,6 +137,9 @@
             <Border Grid.Row="1" Background="White" CornerRadius="10" Padding="20">
                 <Grid>
                     <!-- CLOUD TEAM: WRITE YOUR XAML CODE INSIDE THIS GRID -->
+                    <Border Grid.Row="1" Background="White" CornerRadius="10" Padding="20">
+                        <Grid x:Name="CloudHost"/>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>
@@ -216,6 +219,7 @@
                               Width="90" Height="50"/>
                 <Button Content="Incidents" Click="Incidents_Click" Width="90" Height="50"/>
                 <Button Content="Location" Click="Location_Click" Width="90" Height="50"/>
+                <Button Content="Cloud" Click="Cloud_Click" Width="90" Height="50"/>
                 <Button x:Name="EndBtn" Content="End Meeting" Click="End_Click" Width="110" Height="50"
                         Background="#D13438" Foreground="White"/>
             </StackPanel>

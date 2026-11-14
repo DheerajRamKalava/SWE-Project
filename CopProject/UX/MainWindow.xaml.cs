@@ -11,6 +11,9 @@ using Cloud.Persistence;
 using Controller;
 using Controller.Models;
 using Controller.ViewModels;
+using Cloud.Networking;
+using Cloud.UI.ViewModels;
+using Cloud.UI.Views;
 using FileSynchroniser.Models;
 using FileSynchroniser.Views;
 using FileSynchroniser.Network;
@@ -61,8 +64,12 @@ public sealed partial class MainWindow : Window
     private ChatPanelViewModel? _chatViewModel;
     private WhiteboardSession? _whiteboardSession;
     private WhiteBoardViewModel? _whiteboardViewModel;
-
     private string Role => _isHost ? HostRole : ParticipantRole;
+
+    // CLOUD TEAM: created on first visit to the Cloud page and kept, so the connection
+    // and the notification list survive pressing Back and coming back.
+    private NotificationServiceViewModel? _cloudViewModel;
+
 
     public MainWindow()
     {
@@ -105,7 +112,6 @@ public sealed partial class MainWindow : Window
                 DispatcherQueue.TryEnqueue(() => TryInitializeWhiteboardSession(false));
             }
         };
-
         Closed += (_, _) => {
             DisposeChatSession();
             DisposeWhiteboardSession();
@@ -123,6 +129,9 @@ public sealed partial class MainWindow : Window
                 DispatcherQueue.TryEnqueue(() => FileSyncFrame.Navigate(typeof(Page)));
             }
         };
+
+        // CLOUD TEAM: close the server connection when the app closes.
+        Closed += async (_, _) => await ResetCloudAsync();
 
         ShowScreen("login");
     }
@@ -326,11 +335,10 @@ public sealed partial class MainWindow : Window
         DisposeWhiteboardSession();
         ShowScreen("login");
     }
-
-    private void Cloud_Click(object sender, RoutedEventArgs e)
-    {
-        ShowScreen("cloud");
-    }
+    //private void Cloud_Click(object sender, RoutedEventArgs e)
+    //{
+    //    ShowScreen("cloud");
+    //}
 
     private void CloudBack_Click(object sender, RoutedEventArgs e)
     {
@@ -514,6 +522,47 @@ public sealed partial class MainWindow : Window
         }
 
         ShowChat(ChatBtn.IsChecked == true);
+    }
+
+
+    private async void Cloud_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            EnsureCloudView();
+            ShowScreen("cloud");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Unable to load cloud", ex.Message);
+        }
+    }
+
+    /// <summary>Builds the Notification Service page the first time it is needed.</summary>
+    private void EnsureCloudView()
+    {
+        if (_cloudViewModel is not null)
+        {
+            return;
+        }
+
+        // Must run on the UI thread (it does: this is called from a click handler).
+        _cloudViewModel = new NotificationServiceViewModel(MessengerFactory.GetMessenger);
+        CloudHost.Children.Add(new NotificationServiceView(_cloudViewModel));
+    }
+
+    /// <summary>Closes the connection and removes the page; the next visit builds a fresh one.</summary>
+    private async Task ResetCloudAsync()
+    {
+        NotificationServiceViewModel? viewModel = _cloudViewModel;
+        if (viewModel is null)
+        {
+            return;
+        }
+
+        _cloudViewModel = null;
+        CloudHost.Children.Clear();
+        await viewModel.DisposeAsync();
     }
 
     private void ShowChat(bool show)
