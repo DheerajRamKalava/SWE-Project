@@ -30,5 +30,6 @@
     <ProjectReference Include="..\Cloud\Cloud.csproj" />
     <ProjectReference Include="..\Cloud\UI\Cloud.Crash.UI.csproj" />
 
+    <ProjectReference Include="..\Whiteboard\Whiteboard.csproj" />
   </ItemGroup>
 </Project>
