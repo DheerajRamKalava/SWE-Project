@@ -300,8 +300,10 @@ public sealed partial class MainWindow : Window
             "Save");
     
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
             return;
-    
+        }
+
         if (newPicture != null)
         {
             _picture = ProfileStore.CopyPicture(newPicture);
@@ -611,7 +613,7 @@ public sealed partial class MainWindow : Window
             }
 
             _chatViewModel = new ChatPanelViewModel(_chatAdapter);
-            MeetingChatPanel.ViewModel = _chatViewModel;
+            //MeetingChatPanel.ViewModel = _chatViewModel;
             _chatViewModel.Initialize();
         }
         catch (Exception exception)
@@ -623,7 +625,7 @@ public sealed partial class MainWindow : Window
 
     private void DisposeChatSession()
     {
-        MeetingChatPanel.ViewModel = null;
+        //MeetingChatPanel.ViewModel = null;
         _chatViewModel?.Dispose();
         _chatAdapter?.Dispose();
         _chatClient?.Dispose();
