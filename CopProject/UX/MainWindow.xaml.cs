@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Linq;
 using Cloud.Persistence;
 using Controller;
 using Controller.Models;
@@ -36,6 +35,7 @@ using UI.ViewModels;
 using UX.Models;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using Chat;
 
 
 namespace UX;
@@ -612,7 +612,7 @@ public sealed partial class MainWindow : Window
             }
 
             _chatViewModel = new ChatPanelViewModel(_chatAdapter);
-            MeetingChatPanel.ViewModel = _chatViewModel;
+            //MeetingChatPanel.ViewModel = _chatViewModel;
             _chatViewModel.Initialize();
         }
         catch (Exception exception)
@@ -624,7 +624,7 @@ public sealed partial class MainWindow : Window
 
     private void DisposeChatSession()
     {
-        MeetingChatPanel.ViewModel = null;
+        //MeetingChatPanel.ViewModel = null;
         _chatViewModel?.Dispose();
         _chatAdapter?.Dispose();
         _chatClient?.Dispose();
