@@ -64,12 +64,12 @@ public sealed partial class MainWindow : Window
     private ChatPanelViewModel? _chatViewModel;
     private WhiteboardSession? _whiteboardSession;
     private WhiteBoardViewModel? _whiteboardViewModel;
-
     private string Role => _isHost ? HostRole : ParticipantRole;
 
     // CLOUD TEAM: created on first visit to the Cloud page and kept, so the connection
     // and the notification list survive pressing Back and coming back.
     private NotificationServiceViewModel? _cloudViewModel;
+
 
     public MainWindow()
     {
@@ -112,7 +112,6 @@ public sealed partial class MainWindow : Window
                 DispatcherQueue.TryEnqueue(() => TryInitializeWhiteboardSession(false));
             }
         };
-
         Closed += (_, _) => {
             DisposeChatSession();
             DisposeWhiteboardSession();
@@ -333,7 +332,6 @@ public sealed partial class MainWindow : Window
         DisposeWhiteboardSession();
         ShowScreen("login");
     }
-
     //private void Cloud_Click(object sender, RoutedEventArgs e)
     //{
     //    ShowScreen("cloud");
@@ -343,6 +341,7 @@ public sealed partial class MainWindow : Window
     {
         ShowScreen(_inMeeting ? "meeting" : "dash");
     }
+
 
     private void Start_Click(object sender, RoutedEventArgs e)
     {
@@ -612,7 +611,7 @@ public sealed partial class MainWindow : Window
             }
 
             _chatViewModel = new ChatPanelViewModel(_chatAdapter);
-            //MeetingChatPanel.ViewModel = _chatViewModel;
+            MeetingChatPanel.ViewModel = _chatViewModel;
             _chatViewModel.Initialize();
         }
         catch (Exception exception)
@@ -624,7 +623,7 @@ public sealed partial class MainWindow : Window
 
     private void DisposeChatSession()
     {
-        //MeetingChatPanel.ViewModel = null;
+        MeetingChatPanel.ViewModel = null;
         _chatViewModel?.Dispose();
         _chatAdapter?.Dispose();
         _chatClient?.Dispose();
